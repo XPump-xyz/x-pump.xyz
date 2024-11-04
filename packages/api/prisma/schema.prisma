@@ -1,0 +1,51 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             Int             @id @default(autoincrement())
+  telegramId     BigInt          @unique
+  firstName      String?
+  lastName       String?
+  username       String?
+  walletAddress  String?
+  photoUrl       String?
+  isPremium      Boolean         @default(false)
+  languageCode   String?
+  level          Int             @default(0)
+  xpBalance      Float           @default(0)
+  refBalance     Float           @default(0)
+  referralCode   String          @unique
+  referredByCode String?
+  friendCount    Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  MiningSession  MiningSession[]
+
+  @@index([walletAddress])
+  @@index([referralCode])
+  @@index([referredByCode])
+}
+
+model MiningSession {
+  id        Int                 @id @default(autoincrement())
+  user      User                @relation(fields: [userId], references: [id])
+  userId    Int
+  status    MiningSessionStatus @default(MINING)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+}
+
+enum MiningSessionStatus {
+  MINING
+  FULFILLED
+  CLAIMED
+}

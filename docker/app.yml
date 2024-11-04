@@ -1,0 +1,15 @@
+name: zupadapp
+services:
+  app:
+    build: ..
+    environment:
+      - BACKEND_ENV=prod
+    ports:
+      - 8080:8080
+    depends_on:
+      postgresql:
+        condition: service_healthy
+  postgresql:
+    extends:
+      file: ./postgresql.yml
+      service: postgresql
