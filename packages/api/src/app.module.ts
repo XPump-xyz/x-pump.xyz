@@ -10,6 +10,9 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { redisStore } from 'cache-manager-redis-yet';
 import { AppLoggerMiddleware } from './middlewares/logger.middleware';
 import { JwtModule } from '@nestjs/jwt';
+import { LiquidityPoolModule } from './liquidity-pool/liquidity-pool.module';
+import encryptionConfig from './config/encryption.config';
+import { validationSchema } from './config/validation.schema';
 
 @Module({
   imports: [
@@ -28,7 +31,11 @@ import { JwtModule } from '@nestjs/jwt';
       signOptions: { expiresIn: '30d' },
       global: true,
     }),
-
+    ConfigModule.forRoot({
+      load: [encryptionConfig],
+      validationSchema,
+      isGlobal: true,
+    }),
     PrismaModule,
     UserModule,
     AuthModule,
@@ -39,6 +46,7 @@ import { JwtModule } from '@nestjs/jwt';
       },
     ]),
     PrismaModule,
+    LiquidityPoolModule,
   ],
   controllers: [],
   providers: [],

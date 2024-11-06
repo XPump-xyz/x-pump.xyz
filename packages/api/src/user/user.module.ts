@@ -7,6 +7,8 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaModule } from '../prisma/prisma.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TelegrafModule } from 'nestjs-telegraf';
+import { EncryptionService } from './encryption.service';
+import { WalletService } from './wallet.service';
 @Module({
   imports: [
     PrismaModule,
@@ -22,6 +24,8 @@ import { TelegrafModule } from 'nestjs-telegraf';
     UserCacheInterceptor,
     CacheService,
     JwtService,
+    EncryptionService,
+    WalletService,
   ],
   exports: [UserService],
 })

@@ -11,41 +11,157 @@ datasource db {
 }
 
 model User {
-  id             Int             @id @default(autoincrement())
-  telegramId     BigInt          @unique
-  firstName      String?
-  lastName       String?
-  username       String?
-  walletAddress  String?
-  photoUrl       String?
-  isPremium      Boolean         @default(false)
-  languageCode   String?
-  level          Int             @default(0)
-  xpBalance      Float           @default(0)
-  refBalance     Float           @default(0)
-  referralCode   String          @unique
-  referredByCode String?
-  friendCount    Int             @default(0)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  MiningSession  MiningSession[]
-
-  @@index([walletAddress])
-  @@index([referralCode])
-  @@index([referredByCode])
+  id                Int                 @id @default(autoincrement())
+  telegramId        BigInt              @unique
+  username          String?
+  firstName         String?
+  lastName          String?
+  isPremium         Boolean             @default(false)
+  referralCode      String              @unique
+  languageCode      String?
+  photoUrl          String?
+  referredByCode    String?
+  walletAddress     String?
+  walletSeed        String? // Encrypted seed
+  walletType        WalletType? // CREATED or IMPORTED
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  createdTokens     Token[]             @relation("CreatedTokens")
+  transactions      Transaction[]
+  followers         Follow[]            @relation("Following")
+  following         Follow[]            @relation("Followers")
+  notes             CommunityNote[]
+  portfolio         Portfolio[]
+  LiquidityPosition LiquidityPosition[]
+  SwapTransaction   SwapTransaction[]
 }
 
-model MiningSession {
-  id        Int                 @id @default(autoincrement())
-  user      User                @relation(fields: [userId], references: [id])
+enum WalletType {
+  CREATED
+  IMPORTED
+}
+
+model Token {
+  id              Int             @id @default(autoincrement())
+  name            String
+  symbol          String          @unique
+  totalSupply     Decimal
+  description     String?
+  telegramChat    String?
+  telegramChannel String?
+  website         String?
+  twitter         String?
+  creatorId       Int
+  creator         User            @relation("CreatedTokens", fields: [creatorId], references: [id])
+  issuerAddress   String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  transactions    Transaction[]
+  marketCap       Decimal         @default(0)
+  price           Decimal         @default(0)
+  holders         Portfolio[]
+  notes           CommunityNote[]
+  LiquidityPool   LiquidityPool[]
+}
+
+model Transaction {
+  id          Int      @id @default(autoincrement())
+  type        TxType
+  amount      Decimal
+  tokenAmount Decimal
+  price       Decimal
+  tokenId     Int
+  userId      Int
+  timestamp   DateTime @default(now())
+  token       Token    @relation(fields: [tokenId], references: [id])
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([tokenId])
+  @@index([userId])
+}
+
+model Portfolio {
+  id        Int      @id @default(autoincrement())
   userId    Int
-  status    MiningSessionStatus @default(MINING)
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
+  tokenId   Int
+  amount    Decimal
+  user      User     @relation(fields: [userId], references: [id])
+  token     Token    @relation(fields: [tokenId], references: [id])
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, tokenId])
 }
 
-enum MiningSessionStatus {
-  MINING
-  FULFILLED
-  CLAIMED
+model Follow {
+  id          Int      @id @default(autoincrement())
+  followerId  Int
+  followingId Int
+  follower    User     @relation("Following", fields: [followerId], references: [id])
+  following   User     @relation("Followers", fields: [followingId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@unique([followerId, followingId])
+}
+
+model CommunityNote {
+  id        Int      @id @default(autoincrement())
+  content   String
+  userId    Int
+  tokenId   Int
+  helpful   Int      @default(0)
+  unhelpful Int      @default(0)
+  user      User     @relation(fields: [userId], references: [id])
+  token     Token    @relation(fields: [tokenId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+enum TxType {
+  BUY
+  SELL
+  DEPLOY
+}
+
+model LiquidityPool {
+  id            String              @id @default(cuid())
+  tokenId       Int
+  token         Token               @relation(fields: [tokenId], references: [id])
+  ammAddress    String              @unique
+  xrpReserve    String              @default("0")
+  tokenReserve  String              @default("0")
+  totalLPTokens String              @default("0")
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  positions     LiquidityPosition[]
+  swaps         SwapTransaction[]
+}
+
+model LiquidityPosition {
+  id          String        @id @default(cuid())
+  userId      Int
+  user        User          @relation(fields: [userId], references: [id])
+  poolId      String
+  pool        LiquidityPool @relation(fields: [poolId], references: [id])
+  xrpAmount   String
+  tokenAmount String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([poolId])
+}
+
+model SwapTransaction {
+  id         String        @id @default(cuid())
+  userId     Int
+  user       User          @relation(fields: [userId], references: [id])
+  poolId     String
+  pool       LiquidityPool @relation(fields: [poolId], references: [id])
+  fromToken  String
+  toToken    String
+  fromAmount String
+  toAmount   String
+  timestamp  DateTime
+
+  @@index([userId])
+  @@index([poolId])
 }

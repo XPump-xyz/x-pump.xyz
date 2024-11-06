@@ -19,9 +19,14 @@ export const viewport: Viewport = {
   maximumScale: 1.0,
   userScalable: false,
 };
-const formula = localFont({
-  src: "../public/fonts/NUSAR.ttf",
-  variable: "--font-nusa",
+const sora = localFont({
+  src: "../public/fonts/sora/Sora-Regular.ttf",
+  variable: "--font-sora",
+});
+
+const rigamesh = localFont({
+  src: "../public/fonts/rigamesh/Rigamesh.ttf",
+  variable: "--font-rigamesh",
 });
 
 export default function RootLayout({ children }: PropsWithChildren) {
@@ -31,7 +36,7 @@ export default function RootLayout({ children }: PropsWithChildren) {
       <Script src="https://telegram.org/js/telegram-web-app.js"></Script>
 
       <body
-        className={`${formula.variable} bg-[#141414] w-[var(--tg-viewport-width)] h-[var(--tg-viewport-height)]`}
+        className={`${sora.variable} ${rigamesh.variable} bg-[#0A0A0A] w-[var(--tg-viewport-width)] h-[var(--tg-viewport-height)]`}
       >
         <UserStoreProvider>
           <Root>{children}</Root>

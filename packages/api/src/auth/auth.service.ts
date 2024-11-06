@@ -59,18 +59,17 @@ export class AuthService {
       referrer = await this.prismaService.user.findUnique({
         where: { referralCode },
       });
-      if (referrer) {
-        await this.prismaService.user.update({
-          where: { id: referrer.id },
-          data: {
-            xpBalance: {
-              increment: user.isPremium ? 1000 : 100,
-            },
-          },
-        });
-      }
+      // if (referrer) {
+      //   await this.prismaService.user.update({
+      //     where: { id: referrer.id },
+      //     data: {
+      //       xpBalance: {
+      //         increment: user.isPremium ? 1000 : 100,
+      //       },
+      //     },
+      //   });
+      // }
     }
-    const userAge = getTelegramUserAge(user.id);
     const images = await this.bot.telegram.getUserProfilePhotos(user.id, 0);
     const profilePhoto = images.photos[0]?.[0]?.file_id;
     let photo_url = null;
@@ -89,11 +88,7 @@ export class AuthService {
         lastName: user.lastName,
         languageCode: user.languageCode,
         photoUrl: photo_url,
-        level: userAge,
         isPremium: user.isPremium,
-        refBalance: {
-          increment: user.isPremium ? 1000 : 100,
-        },
       },
       create: {
         telegramId: user.id,
@@ -104,7 +99,6 @@ export class AuthService {
         photoUrl: photo_url,
         isPremium: user.isPremium,
         referralCode: newReferralCode,
-        level: userAge,
         referredByCode: referrer?.referralCode,
       },
     });

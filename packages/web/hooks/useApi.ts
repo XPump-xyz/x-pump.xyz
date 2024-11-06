@@ -1,10 +1,11 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { QueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { axiosInstance } from "@/utils/utils";
+
 export const baseUrl =
   process.env.NEXT_RUNTIME_NODE_ENV === "development"
-    ? "https://abc054f586b4.ngrok.app/api/v1"
+    ? "https://f96c46c75e18.ngrok.app/api/v1"
     : "/api/v1";
+
 export const config = () => {
   return {
     headers: {
@@ -20,15 +21,12 @@ export const api = async (
   obj = {},
   customConfig = {}
 ) => {
-  console.log(customConfig);
   const token = localStorage.getItem("token");
   const axiosConfig = config();
   if (token) {
     axiosConfig.headers["Authorization"] = `Bearer ${token}`;
     axiosConfig.headers = { ...axiosConfig.headers, ...customConfig };
   }
-
-  console.log(axiosConfig);
 
   try {
     switch (method) {
@@ -61,8 +59,6 @@ export const api = async (
     const expectedErrorCodes = [401];
     if (expectedErrorCodes.includes(error?.response?.status)) {
       localStorage.clear();
-      // window.location.href = window.location.origin;
-      // window.location.reload();
     }
     throw err;
   }
@@ -78,6 +74,11 @@ interface ApiHookParams {
   customConfig?: any;
 }
 
+interface PostOptions {
+  onSuccess?: (data: any) => void;
+  onError?: (error: any) => void;
+}
+
 export default function useApi({
   key,
   method,
@@ -85,63 +86,77 @@ export default function useApi({
   customConfig,
 }: ApiHookParams) {
   const queryClient = new QueryClient();
+
+  // Declare all hooks at the top level
+  const queryResult = useQuery({
+    queryKey: key,
+    queryFn: async () => {
+      return await api("GET", url, {});
+    },
+    retry: 0,
+    enabled: false,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: true,
+  });
+
+  const postMutation = useMutation({
+    mutationFn: async (obj: any) => {
+      return await api("POST", url, obj, customConfig);
+    },
+    retry: 0,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: key });
+    },
+  });
+
+  const putMutation = useMutation({
+    mutationFn: (obj: { id: number }) => api("PUT", `${url}/${obj?.id}`, obj),
+    retry: 0,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api("DELETE", `${url}/${id}`),
+    retry: 0,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
+  });
+
+  // Create safe post function
+  const safePost = async (data: any, options?: PostOptions) => {
+    if (postMutation.isPending) {
+      console.warn("A request is already in progress. Skipping new request.");
+      return;
+    }
+
+    try {
+      const result = await postMutation.mutateAsync(data);
+      options?.onSuccess?.(result);
+      return result;
+    } catch (error) {
+      options?.onError?.(error);
+      throw error;
+    }
+  };
+
+  // Return appropriate result based on method
   switch (method) {
     case "GET":
-      // eslint-disable-next-line
-      const get = useQuery({
-        queryKey: key,
-        queryFn: async () => {
-          return await api(method, url, {});
-        },
-        retry: 0,
-        enabled: false,
-        staleTime: 1000 * 60 * 5,
-        refetchOnWindowFocus: true,
-      });
-
-      return { get };
+      return { get: queryResult };
 
     case "POST":
-      // eslint-disable-next-line
-      const post = useMutation({
-        mutationFn: (obj: any) => api(method, url, obj, customConfig),
-        retry: 0,
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: key });
-        },
-      });
-      const safePost = (obj: any) => {
-        if (!post.isPending) {
-          post.mutate(obj);
-        }
-      };
       return {
         post: {
-          ...post,
-          ...safePost,
+          ...postMutation,
+          mutate: safePost,
+          mutateAsync: safePost,
         },
       };
 
     case "PUT":
-      // eslint-disable-next-line
-      const put = useMutation({
-        mutationFn: (obj: { id: number }) =>
-          api(method, `${url}/${obj?.id}`, obj),
-
-        retry: 0,
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
-      });
-
-      return { put };
+      return { put: putMutation };
 
     case "DELETE":
-      // eslint-disable-next-line
-      const deleteObj = useMutation({
-        mutationFn: (id: string) => api(method, `${url}/${id}`),
-        retry: 0,
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
-      });
-      return { deleteObj };
+      return { deleteObj: deleteMutation };
 
     default:
       throw new Error(`Invalid method ${method}`);
